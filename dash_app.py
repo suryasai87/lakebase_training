@@ -24,7 +24,7 @@ LAKEBASE_CONFIG = {
     'database': os.environ.get('LAKEBASE_DB', 'trainingdb'),
     'user': os.environ.get('LAKEBASE_USER'),
     'password': os.environ.get('LAKEBASE_PASSWORD'),
-    'port': 5432,
+    'port': int(os.environ.get('LAKEBASE_PORT', '5432')),
     'sslmode': 'require'
 }
 
