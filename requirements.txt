@@ -1,19 +1,20 @@
-# Requirements for Databricks Lakebase Training Application
+# Requirements for Databricks Lakebase Training Application - Dash Version
 # Python 3.9+
+
+# Web Framework - Dash
+dash==2.14.2
+dash-bootstrap-components==1.5.0
+plotly==5.18.0
 
 # Database connectivity
 psycopg2-binary==2.9.9
 sqlalchemy==2.0.23
-
-# Web framework
-streamlit==1.31.0
 
 # Data processing
 pandas==2.1.4
 numpy==1.24.3
 
 # Visualization
-plotly==5.18.0
 matplotlib==3.8.2
 seaborn==0.13.0
 
@@ -48,9 +49,6 @@ mypy==1.8.0
 
 # Vector database operations
 pgvector==0.2.4
-
-# Additional Neon-specific libraries
-neon-py==0.2.0  # If available
 
 # Deployment
 gunicorn==21.2.0

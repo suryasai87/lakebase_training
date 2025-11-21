@@ -1,0 +1,5 @@
+resources:
+  apps:
+    lakebase_training_dashboard:
+      name: lakebase-training-dashboard
+      description: "Interactive Lakebase Training Dashboard with Streamlit"
