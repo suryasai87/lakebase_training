@@ -1,0 +1,56 @@
+# Requirements for Databricks Lakebase Training Application
+# Python 3.9+
+
+# Database connectivity
+psycopg2-binary==2.9.9
+sqlalchemy==2.0.23
+
+# Web framework
+streamlit==1.31.0
+
+# Data processing
+pandas==2.1.4
+numpy==1.24.3
+
+# Visualization
+plotly==5.18.0
+matplotlib==3.8.2
+seaborn==0.13.0
+
+# AI/ML libraries for vector operations
+openai==1.12.0
+scikit-learn==1.3.2
+scipy==1.11.4
+
+# API development and testing
+fastapi==0.109.0
+uvicorn==0.27.0
+requests==2.31.0
+httpx==0.26.0
+
+# PostgREST interaction
+pydantic==2.5.3
+
+# Environment and configuration
+python-dotenv==1.0.0
+pyyaml==6.0.1
+
+# Utility libraries
+click==8.1.7
+tqdm==4.66.1
+tabulate==0.9.0
+
+# Development tools
+pytest==7.4.3
+black==23.12.1
+flake8==7.0.0
+mypy==1.8.0
+
+# Vector database operations
+pgvector==0.2.4
+
+# Additional Neon-specific libraries
+neon-py==0.2.0  # If available
+
+# Deployment
+gunicorn==21.2.0

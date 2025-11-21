@@ -1,0 +1,16 @@
+command:
+  - streamlit
+  - run
+  - app.py
+  - --server.port=8080
+  - --server.address=0.0.0.0
+
+env:
+  - name: LAKEBASE_HOST
+    value: "ep-training-lakebase.us-east-2.aws.neon.tech"
+  - name: LAKEBASE_DB
+    value: "trainingdb"
+  - name: LAKEBASE_USER
+    secret: lakebase_user
+  - name: LAKEBASE_PASSWORD
+    secret: lakebase_password
