@@ -45,11 +45,11 @@ echo ""
 
 # Step 4: Deploy using Databricks Asset Bundles
 echo "Step 4: Deploying to Databricks..."
-echo "   Target: dev"
+echo "   Target: default"
 echo "   App: lakebase-training-app"
 echo ""
 
-if databricks bundle deploy --target dev; then
+if databricks bundle deploy --target default; then
     echo ""
     echo "✅ DEPLOYMENT SUCCESSFUL!"
 else

@@ -1,3 +1,6 @@
+bundle:
+  name: lakebase-training-app
+
 resources:
   apps:
     lakebase_training_dashboard:
@@ -6,6 +9,3 @@ resources:
 
       # Source configuration
       source_code_path: .
-
-      # App configuration file
-      config_file: app.yaml
