@@ -1,5 +1,11 @@
 resources:
   apps:
     lakebase_training_dashboard:
-      name: lakebase-training-dashboard
-      description: "Interactive Lakebase Training Dashboard with Streamlit"
+      name: lakebase-training-app
+      description: "Interactive Lakebase Training Dashboard with Dash - Fixed 502 Error"
+
+      # Source configuration
+      source_code_path: .
+
+      # App configuration file
+      config_file: app.yaml
