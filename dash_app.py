@@ -10,32 +10,77 @@ import dash_bootstrap_components as dbc
 from dash.exceptions import PreventUpdate
 import plotly.express as px
 import plotly.graph_objects as go
-import psycopg2
-from psycopg2.extras import RealDictCursor
+import psycopg
+from psycopg import sql
+from psycopg.rows import dict_row
+from psycopg_pool import ConnectionPool
 import pandas as pd
 from datetime import datetime
 import json
+import time
+from databricks import sdk
+
+# ========================================
+# OAuth Token Management
+# ========================================
+workspace_client = sdk.WorkspaceClient()
+postgres_password = None
+last_password_refresh = 0
+connection_pool = None
+
+def refresh_oauth_token():
+    """Refresh OAuth token if expired."""
+    global postgres_password, last_password_refresh
+    if postgres_password is None or time.time() - last_password_refresh > 900:
+        print("Refreshing PostgreSQL OAuth token")
+        try:
+            postgres_password = workspace_client.config.oauth_token().access_token
+            last_password_refresh = time.time()
+            print("OAuth token refreshed successfully")
+        except Exception as e:
+            print(f"Failed to refresh OAuth token: {str(e)}")
+            raise
 
 # ========================================
 # Database Configuration
 # ========================================
-LAKEBASE_CONFIG = {
-    'host': os.environ.get('LAKEBASE_HOST', 'ep-training-lakebase.us-east-2.aws.neon.tech'),
-    'database': os.environ.get('LAKEBASE_DB', 'trainingdb'),
-    'user': os.environ.get('LAKEBASE_USER'),
-    'password': os.environ.get('LAKEBASE_PASSWORD'),
-    'port': int(os.environ.get('LAKEBASE_PORT', '5432')),
-    'sslmode': 'require'
-}
+def get_connection_pool():
+    """Get or create the connection pool."""
+    global connection_pool
+    if connection_pool is None:
+        refresh_oauth_token()
+        conn_string = (
+            f"dbname={os.getenv('PGDATABASE')} "
+            f"user={os.getenv('PGUSER')} "
+            f"password={postgres_password} "
+            f"host={os.getenv('PGHOST')} "
+            f"port={os.getenv('PGPORT')} "
+            f"sslmode={os.getenv('PGSSLMODE', 'require')} "
+            f"application_name={os.getenv('PGAPPNAME', 'lakebase-training-app')}"
+        )
+        connection_pool = ConnectionPool(conn_string, min_size=2, max_size=10)
+        print("Connection pool created successfully")
+    return connection_pool
+
+def get_connection():
+    """Get a connection from the pool."""
+    global connection_pool
+
+    # Recreate pool if token expired
+    if postgres_password is None or time.time() - last_password_refresh > 900:
+        if connection_pool:
+            connection_pool.close()
+            connection_pool = None
+
+    return get_connection_pool().connection()
 
 # ========================================
 # Database Connection Manager
 # ========================================
 class LakebaseConnection:
-    """Manage Lakebase database connections"""
+    """Manage Lakebase database connections with OAuth token refresh"""
 
-    def __init__(self, config=None):
-        self.config = config or LAKEBASE_CONFIG
+    def __init__(self):
         self.connection = None
         self.cursor = None
 
@@ -49,8 +94,8 @@ class LakebaseConnection:
     def connect(self):
         """Establish connection to Lakebase"""
         try:
-            self.connection = psycopg2.connect(**self.config)
-            self.cursor = self.connection.cursor(cursor_factory=RealDictCursor)
+            self.connection = get_connection()
+            self.cursor = self.connection.cursor(row_factory=dict_row)
             return True
         except Exception as e:
             print(f"Connection failed: {e}")
