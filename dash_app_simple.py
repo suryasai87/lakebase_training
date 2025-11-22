@@ -201,4 +201,8 @@ app.layout = html.Div([
 # Run the app
 # ========================================
 if __name__ == '__main__':
-    app.run_server(debug=True, host='0.0.0.0', port=8080)
+    # Get port from environment variable for Databricks Apps compatibility
+    # DATABRICKS_APP_PORT is set by Databricks Apps (typically 8000)
+    # Falls back to PORT or 8080 for local development
+    port = int(os.environ.get('DATABRICKS_APP_PORT', os.environ.get('PORT', '8080')))
+    app.run_server(debug=True, host='0.0.0.0', port=port)
