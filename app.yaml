@@ -3,12 +3,20 @@ command:
   - dash_app.py
 
 env:
+  # Sensitive values - retrieved from Databricks Secrets
   - name: PGHOST
-    value: "instance-6b59171b-cee8-4acc-9209-6c848ffbfbfe.database.cloud.databricks.com"
+    valueFrom:
+      secretRef:
+        name: lakebase-db-host
+        key: host
+  - name: PGUSER
+    valueFrom:
+      secretRef:
+        name: lakebase-db-user
+        key: user
+  # Non-sensitive configuration values
   - name: PGDATABASE
     value: "databricks_postgres"
-  - name: PGUSER
-    value: "f6e5df56-fa6c-4262-970b-8f27dd6fa850"
   - name: PGPORT
     value: "5432"
   - name: PGSSLMODE

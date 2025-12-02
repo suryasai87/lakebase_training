@@ -45,14 +45,25 @@ def get_oauth_token():
     return postgres_password
 
 # ========================================
-# Database Configuration - CORRECTED
+# Database Configuration
 # IMPORTANT: PGUSER must match the OAuth token identity
-# - For Databricks Apps: Use Service Principal ID
+# - For Databricks Apps: Use Service Principal ID (set via Databricks Secrets)
 # - For local dev: Use your Databricks email
+# All sensitive values MUST be provided via environment variables
 # ========================================
-PGHOST = os.getenv('PGHOST', 'instance-6b59171b-cee8-4acc-9209-6c848ffbfbfe.database.cloud.databricks.com')
+def _get_required_env(name: str) -> str:
+    """Get a required environment variable or raise an error."""
+    value = os.environ.get(name)
+    if not value:
+        raise ValueError(f"Required environment variable {name} is not set. "
+                        f"Please configure it in app.yaml using Databricks Secrets.")
+    return value
+
+# Required - no hardcoded defaults for sensitive values
+PGHOST = _get_required_env('PGHOST')
+PGUSER = _get_required_env('PGUSER')
+# Less sensitive - can have defaults
 PGDATABASE = os.getenv('PGDATABASE', 'databricks_postgres')
-PGUSER = os.getenv('PGUSER', 'f6e5df56-fa6c-4262-970b-8f27dd6fa850')
 PGPORT = os.getenv('PGPORT', '5432')
 
 def get_db_connection():
