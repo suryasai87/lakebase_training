@@ -43,7 +43,7 @@ def get_oauth_token():
 # ========================================
 PGHOST = os.getenv('PGHOST', 'instance-6b59171b-cee8-4acc-9209-6c848ffbfbfe.database.cloud.databricks.com')
 PGDATABASE = os.getenv('PGDATABASE', 'databricks_postgres')
-PGUSER = os.getenv('PGUSER', '1e6260c5-f44b-4d66-bb19-ccd360f98b36')
+PGUSER = os.getenv('PGUSER', 'f6e5df56-fa6c-4262-970b-8f27dd6fa850')
 PGPORT = os.getenv('PGPORT', '5432')
 
 def get_db_connection():
@@ -83,11 +83,13 @@ class LakebaseConnection:
             return True
         except Exception as e:
             print(f"Connection failed: {e}")
+            self.last_error = str(e)
             return False
 
     def execute_query(self, query, params=None):
         if not self.connection or not self.cursor:
-            raise Exception("Database connection not established")
+            error_msg = getattr(self, 'last_error', 'Unknown connection error')
+            raise Exception(f"Database connection not established: {error_msg}")
         try:
             self.cursor.execute(query, params)
             if query.strip().upper().startswith('SELECT'):

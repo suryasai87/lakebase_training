@@ -8,7 +8,7 @@ env:
   - name: PGDATABASE
     value: "databricks_postgres"
   - name: PGUSER
-    value: "1e6260c5-f44b-4d66-bb19-ccd360f98b36"
+    value: "f6e5df56-fa6c-4262-970b-8f27dd6fa850"
   - name: PGPORT
     value: "5432"
   - name: PGSSLMODE
