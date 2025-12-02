@@ -45,7 +45,7 @@ This application demonstrates the following Lakebase/PostgreSQL capabilities:
 ```python
 # Standard psycopg3 connection with SSL
 # IMPORTANT: PGUSER must match the OAuth token identity
-# - For Databricks Apps: Use Service Principal ID (e.g., 1e6260c5-f44b-4d66-bb19-ccd360f98b36)
+# - For Databricks Apps: Use Service Principal ID (this app uses: f6e5df56-fa6c-4262-970b-8f27dd6fa850)
 # - For local dev: Use your Databricks email
 conn_string = (
     f"dbname={PGDATABASE} "
@@ -55,6 +55,13 @@ conn_string = (
     f"sslmode=require"
 )
 ```
+
+**Current Lakebase Configuration:**
+- **Instance ID:** `6b59171b-cee8-4acc-9209-6c848ffbfbfe`
+- **Host:** `instance-6b59171b-cee8-4acc-9209-6c848ffbfbfe.database.cloud.databricks.com`
+- **Database:** `databricks_postgres`
+- **Schema:** `ecommerce`
+- **Service Principal:** `f6e5df56-fa6c-4262-970b-8f27dd6fa850`
 
 ### 2. **OAuth Token Authentication**
 ```python
@@ -68,11 +75,24 @@ postgres_password = workspace_client.config.oauth_token().access_token
 - **Important:** The PGUSER must match the OAuth token identity
 
 ### 3. **Service Principal Permissions**
-When deploying to Databricks Apps, grant permissions to the Service Principal:
+When deploying to Databricks Apps, grant permissions to the Service Principal.
+
+**Important:** Each Databricks App has its own unique Service Principal. You must grant permissions to the specific Service Principal for your app.
+
 ```sql
-GRANT USAGE ON SCHEMA ecommerce TO "<service-principal-id>";
-GRANT SELECT ON ALL TABLES IN SCHEMA ecommerce TO "<service-principal-id>";
-GRANT INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA ecommerce TO "<service-principal-id>";
+-- For this app (lakebase-training-app)
+GRANT USAGE ON SCHEMA ecommerce TO "f6e5df56-fa6c-4262-970b-8f27dd6fa850";
+GRANT SELECT ON ALL TABLES IN SCHEMA ecommerce TO "f6e5df56-fa6c-4262-970b-8f27dd6fa850";
+GRANT INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA ecommerce TO "f6e5df56-fa6c-4262-970b-8f27dd6fa850";
+
+-- For future tables
+ALTER DEFAULT PRIVILEGES IN SCHEMA ecommerce GRANT SELECT ON TABLES TO "f6e5df56-fa6c-4262-970b-8f27dd6fa850";
+ALTER DEFAULT PRIVILEGES IN SCHEMA ecommerce GRANT INSERT, UPDATE, DELETE ON TABLES TO "f6e5df56-fa6c-4262-970b-8f27dd6fa850";
+```
+
+**Finding Your App's Service Principal ID:**
+```bash
+databricks apps get <your-app-name> | grep service_principal_client_id
 ```
 
 ### 4. **Advanced Data Types**
@@ -545,38 +565,63 @@ python dash_app.py
 
 ### Common Issues
 
-**1. Connection Refused**
+**1. OAuth Token Identity Mismatch**
+```
+Error: OAuth token identity 'xxxx-xxxx' did not match the security label configured for role 'user@email.com'
+```
+**Solution:** The PGUSER must match the OAuth token identity:
+- For Databricks Apps: Use Service Principal ID as PGUSER
+- For local dev: Use your Databricks email as PGUSER
+- Find your app's Service Principal: `databricks apps get <app-name> | grep service_principal_client_id`
+
+**2. Role Does Not Exist**
+```
+Error: FATAL: role "token" does not exist
+```
+**Solution:** Don't use "token" as PGUSER. Use the actual identity (Service Principal ID or email).
+
+**3. Permission Denied**
+```
+Error: permission denied for table users
+```
+**Solution:** Grant permissions to the Service Principal:
+```sql
+GRANT USAGE ON SCHEMA ecommerce TO "<service-principal-id>";
+GRANT SELECT ON ALL TABLES IN SCHEMA ecommerce TO "<service-principal-id>";
+```
+
+**4. Connection Refused**
 ```
 Error: could not connect to server: Connection refused
 ```
 **Solution:** Verify your `PGHOST` is correct and the Lakebase instance is running.
 
-**2. Authentication Failed**
+**5. Authentication Failed**
 ```
 Error: password authentication failed
 ```
-**Solution:** Ensure you're using a fresh OAuth token. Tokens expire after 1 hour.
+**Solution:** Ensure you're using a fresh OAuth token. The app auto-refreshes tokens every 15 minutes.
 
-**3. SSL Certificate Error**
+**6. JSONB Display Error in DataTable**
 ```
-Error: SSL SYSCALL error
+Error: Expected string, number, boolean - got dict
 ```
-**Solution:** Set `PGSSLMODE=require` in your environment.
+**Solution:** Use `convert_for_datatable()` function to convert JSONB columns to strings before display.
 
-**4. Schema Not Found**
+**7. Schema Not Found**
 ```
 Error: relation "ecommerce.users" does not exist
 ```
 **Solution:** Run `setup_database.sql` to create the schema and tables.
 
-**5. 502 Bad Gateway on Databricks Apps**
+**8. 502 Bad Gateway on Databricks Apps**
 ```
 Error: 502 Bad Gateway
 ```
 **Solution:**
 - Check the app.yaml command is correct
 - Verify the port matches `DATABRICKS_APP_PORT`
-- Check app logs: `databricks apps logs lakebase-training-app`
+- Check app logs: `databricks apps get <app-name>`
 
 ### Debugging Commands
 
