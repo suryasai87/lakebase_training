@@ -13,7 +13,6 @@ import plotly.graph_objects as go
 import psycopg
 from psycopg import sql
 from psycopg.rows import dict_row
-from psycopg_pool import ConnectionPool
 import pandas as pd
 from datetime import datetime
 import json
@@ -23,56 +22,51 @@ from databricks import sdk
 # ========================================
 # OAuth Token Management
 # ========================================
-workspace_client = sdk.WorkspaceClient()
+workspace_client = None
 postgres_password = None
 last_password_refresh = 0
-connection_pool = None
 
-def refresh_oauth_token():
-    """Refresh OAuth token if expired."""
-    global postgres_password, last_password_refresh
+def get_oauth_token():
+    """Get OAuth token from Databricks SDK with auto-refresh."""
+    global workspace_client, postgres_password, last_password_refresh
+
+    # Refresh token every 15 minutes (tokens expire after 1 hour)
     if postgres_password is None or time.time() - last_password_refresh > 900:
-        print("Refreshing PostgreSQL OAuth token")
+        print("Refreshing OAuth token...")
         try:
+            if workspace_client is None:
+                workspace_client = sdk.WorkspaceClient()
             postgres_password = workspace_client.config.oauth_token().access_token
             last_password_refresh = time.time()
             print("OAuth token refreshed successfully")
         except Exception as e:
-            print(f"Failed to refresh OAuth token: {str(e)}")
+            print(f"Failed to get OAuth token: {e}")
             raise
+    return postgres_password
 
 # ========================================
-# Database Configuration
+# Database Configuration - CORRECTED
+# IMPORTANT: PGUSER must match the OAuth token identity
+# - For Databricks Apps: Use Service Principal ID
+# - For local dev: Use your Databricks email
 # ========================================
-def get_connection_pool():
-    """Get or create the connection pool."""
-    global connection_pool
-    if connection_pool is None:
-        refresh_oauth_token()
-        conn_string = (
-            f"dbname={os.getenv('PGDATABASE')} "
-            f"user={os.getenv('PGUSER')} "
-            f"password={postgres_password} "
-            f"host={os.getenv('PGHOST')} "
-            f"port={os.getenv('PGPORT')} "
-            f"sslmode={os.getenv('PGSSLMODE', 'require')} "
-            f"application_name={os.getenv('PGAPPNAME', 'lakebase-training-app')}"
-        )
-        connection_pool = ConnectionPool(conn_string, min_size=2, max_size=10)
-        print("Connection pool created successfully")
-    return connection_pool
+PGHOST = os.getenv('PGHOST', 'instance-6b59171b-cee8-4acc-9209-6c848ffbfbfe.database.cloud.databricks.com')
+PGDATABASE = os.getenv('PGDATABASE', 'databricks_postgres')
+PGUSER = os.getenv('PGUSER', '1e6260c5-f44b-4d66-bb19-ccd360f98b36')
+PGPORT = os.getenv('PGPORT', '5432')
 
-def get_connection():
-    """Get a connection from the pool."""
-    global connection_pool
-
-    # Recreate pool if token expired
-    if postgres_password is None or time.time() - last_password_refresh > 900:
-        if connection_pool:
-            connection_pool.close()
-            connection_pool = None
-
-    return get_connection_pool().connection()
+def get_db_connection():
+    """Get a fresh database connection."""
+    token = get_oauth_token()
+    conn_string = (
+        f"dbname={PGDATABASE} "
+        f"user={PGUSER} "
+        f"password={token} "
+        f"host={PGHOST} "
+        f"port={PGPORT} "
+        f"sslmode=require"
+    )
+    return psycopg.connect(conn_string, row_factory=dict_row)
 
 # ========================================
 # Database Connection Manager
@@ -94,8 +88,8 @@ class LakebaseConnection:
     def connect(self):
         """Establish connection to Lakebase"""
         try:
-            self.connection = get_connection()
-            self.cursor = self.connection.cursor(row_factory=dict_row)
+            self.connection = get_db_connection()
+            self.cursor = self.connection.cursor()
             return True
         except Exception as e:
             print(f"Connection failed: {e}")
@@ -103,23 +97,51 @@ class LakebaseConnection:
 
     def execute_query(self, query, params=None):
         """Execute a query and return results"""
+        if not self.connection or not self.cursor:
+            raise Exception("Database connection not established")
         try:
             self.cursor.execute(query, params)
             if query.strip().upper().startswith('SELECT'):
                 return self.cursor.fetchall()
+            elif 'RETURNING' in query.upper():
+                result = self.cursor.fetchall()
+                self.connection.commit()
+                return result
             else:
                 self.connection.commit()
                 return self.cursor.rowcount
         except Exception as e:
-            self.connection.rollback()
+            if self.connection:
+                try:
+                    self.connection.rollback()
+                except Exception:
+                    pass
             raise e
 
     def close(self):
         """Close database connection"""
-        if self.cursor:
-            self.cursor.close()
-        if self.connection:
-            self.connection.close()
+        try:
+            if self.cursor:
+                self.cursor.close()
+        except Exception:
+            pass
+        try:
+            if self.connection:
+                self.connection.close()
+        except Exception:
+            pass
+        self.cursor = None
+        self.connection = None
+
+# Helper function to convert JSONB for DataTable display
+def convert_for_datatable(df):
+    """Convert JSONB columns to strings for DataTable display."""
+    if df.empty:
+        return df
+    for col in df.columns:
+        if df[col].apply(lambda x: isinstance(x, (dict, list))).any():
+            df[col] = df[col].apply(lambda x: json.dumps(x) if isinstance(x, (dict, list)) else x)
+    return df
 
 # ========================================
 # Initialize Dash App with Bootstrap and custom CSS

@@ -7,7 +7,7 @@ dash-bootstrap-components==1.5.0
 plotly==5.18.0
 
 # Database connectivity
-psycopg[binary,pool]>=3.1.0
+psycopg[binary]>=3.1.0
 sqlalchemy==2.0.23
 
 # Databricks SDK for OAuth token management

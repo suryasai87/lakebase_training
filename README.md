@@ -44,11 +44,14 @@ This application demonstrates the following Lakebase/PostgreSQL capabilities:
 ### 1. **PostgreSQL-Compatible Database Operations**
 ```python
 # Standard psycopg3 connection with SSL
+# IMPORTANT: PGUSER must match the OAuth token identity
+# - For Databricks Apps: Use Service Principal ID (e.g., 1e6260c5-f44b-4d66-bb19-ccd360f98b36)
+# - For local dev: Use your Databricks email
 conn_string = (
-    f"dbname={os.getenv('PGDATABASE')} "
-    f"user={os.getenv('PGUSER')} "
-    f"password={postgres_password} "
-    f"host={os.getenv('PGHOST')} "
+    f"dbname={PGDATABASE} "
+    f"user={PGUSER} "  # Service Principal ID for Apps
+    f"password={token} "
+    f"host={PGHOST} "
     f"sslmode=require"
 )
 ```
@@ -62,15 +65,15 @@ postgres_password = workspace_client.config.oauth_token().access_token
 ```
 - Automatic token refresh every 15 minutes
 - Secure authentication without hardcoded credentials
+- **Important:** The PGUSER must match the OAuth token identity
 
-### 3. **Connection Pooling**
-```python
-from psycopg_pool import ConnectionPool
-
-connection_pool = ConnectionPool(conn_string, min_size=2, max_size=10)
+### 3. **Service Principal Permissions**
+When deploying to Databricks Apps, grant permissions to the Service Principal:
+```sql
+GRANT USAGE ON SCHEMA ecommerce TO "<service-principal-id>";
+GRANT SELECT ON ALL TABLES IN SCHEMA ecommerce TO "<service-principal-id>";
+GRANT INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA ecommerce TO "<service-principal-id>";
 ```
-- Efficient database connection management
-- Automatic connection recycling
 
 ### 4. **Advanced Data Types**
 - **JSONB:** For storing user metadata and shipping addresses
